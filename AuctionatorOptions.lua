@@ -7,6 +7,19 @@ local TAB_ORDER = { "Atr_BasicOptionsFrame", "Atr_TooltipsOptionsFrame", "Atr_UC
 local tabButtons = {}
 local selected = 1
 
+-- the option panels were built with frame levels relative to their original UIParent parentage;
+-- reparenting one into Atr_OptionsWindow and resetting its own level (below) leaves its checkbox/
+-- dropdown descendants at their old, now-unrelated levels, which can tie or fall below the panel's
+-- new level and have the panel's own mouse-enabled backdrop swallow their clicks. Re-leveling every
+-- descendant relative to the panel's new level keeps them strictly on top, however deep they nest.
+local function RaiseFrameLevels(frame, level)
+	frame:SetFrameLevel(level)
+	local kids = { frame:GetChildren() }
+	for _, child in ipairs(kids) do
+		RaiseFrameLevels(child, level + 1)
+	end
+end
+
 local function SelectTab(index)
 
 	selected = index
@@ -83,7 +96,7 @@ local function Build()
 			panel:ClearAllPoints()
 			panel:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -70)
 			panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -14, 50)
-			panel:SetFrameLevel(f:GetFrameLevel() + 2)
+			RaiseFrameLevels(panel, f:GetFrameLevel() + 2)
 		end
 	end
 
