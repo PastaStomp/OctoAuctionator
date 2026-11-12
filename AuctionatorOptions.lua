@@ -73,7 +73,7 @@ local function Build()
 
 	local title = f:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 	title:SetPoint("TOP", f, "TOP", 0, -18)
-	title:SetText("OctoAuctionator")
+	title:SetText("OctoAuctionator Options")
 
 	local labels = { "Basic", "Tooltips", "Undercut", "Selling", "Scanning", "About" }
 	local x = 20

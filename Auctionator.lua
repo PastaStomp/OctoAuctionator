@@ -649,7 +649,7 @@ function Atr_Init()
 
 	gShopPane	= Atr_AddSellTab (ZT("Buy"),			BUY_TAB);
 	gSellPane	= Atr_AddSellTab (ZT("Sell"),			SELL_TAB);
-	gMorePane	= Atr_AddSellTab (ZT("More").."...",	MORE_TAB);
+	gMorePane	= Atr_AddSellTab (ZT("Listings"),	MORE_TAB);
 
 	Atr_AddMainPanel ();
 
@@ -822,7 +822,7 @@ function Atr_AuctionFrameTab_OnClick (index)
 
 		if (index == Atr_FindTabIndex(SELL_TAB))	then AuctionatorTitle:SetText ("Auctionator - "..ZT("Sell"));			end;
 		if (index == Atr_FindTabIndex(BUY_TAB))		then AuctionatorTitle:SetText ("Auctionator - "..ZT("Buy"));			end;
-		if (index == Atr_FindTabIndex(MORE_TAB))	then AuctionatorTitle:SetText ("Auctionator - "..ZT("More").."...");	end;
+		if (index == Atr_FindTabIndex(MORE_TAB))	then AuctionatorTitle:SetText ("Auctionator - "..ZT("Listings"));	end;
 
 		Atr_ClearHlist();
 		Atr_SellControls:Hide();
@@ -3708,14 +3708,14 @@ end
 function Atr_DropDown1_Initialize()
 	local info = UIDropDownMenu_CreateInfo();
 	
-	info.text = ZT("Active Items");
+	info.text = ZT("Active Listings");
 	info.value = MODE_LIST_ACTIVE;
 	info.func = Atr_DropDown1_OnClick;
 	info.owner = Atr_DropDown1;
 	info.checked = nil;
 	UIDropDownMenu_AddButton(info);
 
-	info.text = ZT("All Items");
+	info.text = ZT("History");
 	info.value = MODE_LIST_ALL;
 	info.func = Atr_DropDown1_OnClick;
 	info.owner = Atr_DropDown1;

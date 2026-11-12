@@ -405,7 +405,7 @@
 				</Scripts>
 			</Button>
 
-			<Button name="Auctionator1Button" inherits="UIPanelButtonTemplate" text="Auctionator">
+			<Button name="Auctionator1Button" inherits="UIPanelButtonTemplate" text="Options">
 				<Size><AbsDimension x="90" y="18"/>	</Size>
 				<Anchors>
 					<Anchor point="LEFT" relativeTo="Atr_Search_Button" relativePoint="RIGHT">
@@ -422,7 +422,7 @@
 				<DisabledFont inherits="GameFontDisableSmall"/>
 			</Button>
 			
-			<Button name="Atr_FullScanButton" inherits="UIPanelButtonTemplate" text="Full Scan...">
+			<Button name="Atr_FullScanButton" inherits="UIPanelButtonTemplate" text="Full Scan">
 				<Size><AbsDimension x="74" y="18"/>	</Size>
 				<Anchors><Anchor point="RIGHT" relativeTo="Auctionator1Button" relativePoint="LEFT"><Offset><AbsDimension x="-2" y="0"/></Offset></Anchor></Anchors>
 				<Scripts>

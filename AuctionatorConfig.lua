@@ -185,7 +185,7 @@ function AuctionatorOption_Deftab_Initialize()
 	Atr_AddMenuPick (info, ZT("None"),	0, AuctionatorOption_Deftab_OnClick);
 	Atr_AddMenuPick (info, ZT("Sell"),	1, AuctionatorOption_Deftab_OnClick);
 	Atr_AddMenuPick (info, ZT("Buy"),	2, AuctionatorOption_Deftab_OnClick);
-	Atr_AddMenuPick (info, ZT("More"),	3, AuctionatorOption_Deftab_OnClick);
+	Atr_AddMenuPick (info, ZT("Listings"),	3, AuctionatorOption_Deftab_OnClick);
 
 end
 
