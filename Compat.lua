@@ -104,8 +104,17 @@ function Atr_ItemIdFromAnything(x)
 	return ItemIdOf(x)
 end
 
+-- SellValues (checked below as a fallback) only exists if the player has the separate, optional
+-- "SellValue" addon installed (see the .toc's OptionalDeps) - without it this always returned nil.
+-- C_Item.GetItemSellPriceByID is this server's own extension for vendor price and needs nothing
+-- else installed, so prefer it (confirmed available here via SnapAuction, a known-working addon).
 function Atr_GetSellValueById(id)
-	if id and G.SellValues then
+	if not id then return nil end
+	if G.C_Item and G.C_Item.GetItemSellPriceByID then
+		local v = G.C_Item.GetItemSellPriceByID(id)
+		if v and v > 0 then return v end
+	end
+	if G.SellValues then
 		local v = G.SellValues["item:" .. id]
 		if v then return v end
 	end
@@ -140,9 +149,9 @@ function Atr_GetItemInfo(x)
 	-- preserve the enchant/suffix/unique fields when they're already in `x` - rebuilding the
 	-- query as bare "item:ID:0:0:0" always asked for the base item, silently dropping any random
 	-- property ("of the Owl" etc.) and returning the wrong (suffix-less) name/price lookups for it
+	local id = ItemIdOf(x)
 	local itemString = Atr_NormalizeItemLink(x)
 	if not itemString then
-		local id = ItemIdOf(x)
 		if not id then return nil end
 		itemString = "item:" .. id .. ":0:0:0"
 	end
@@ -508,7 +517,10 @@ function Atr_CreateMoneyFrame(parent, moneyType)
 end
 
 function Atr_SetMoney(frame, money)
-	MoneyFrame_Update(frame:GetName(), money or 0)
+	-- deposit math in particular (CalculateAuctionDeposit split across stacks) can produce a
+	-- fractional copper amount, which MoneyFrame_Update then shows as a decimal on one of the
+	-- coin textures instead of rounding it away
+	MoneyFrame_Update(frame:GetName(), math.floor((money or 0) + 0.5))
 end
 
 -- tooltips: one pooled money frame per priced line, hidden whenever the tooltip is reused or hidden

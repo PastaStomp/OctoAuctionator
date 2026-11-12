@@ -2562,20 +2562,34 @@ end
 -----------------------------------------
 
 function Atr_SetDepositText()
-			
-	_, auctionCount = Atr_GetSellItemInfo();
-	
+
+	local auctionItemName, auctionItemCount, auctionItemLink = Atr_GetSellItemInfo();
+	auctionCount = auctionItemCount;
+
 	if (auctionCount > 0) then
 		local duration = UIDropDownMenu_GetSelectedValue(Atr_Duration);
-	
-		local deposit1 = CalculateAuctionDeposit (AtrNS.durationMinutes[duration] or 1440) / auctionCount;
+		local minutes = AtrNS.durationMinutes[duration] or 1440;
+		local stackSize = Atr_StackSize();
+
+		-- CalculateAuctionDeposit only knows about the stack currently sitting in the sell slot,
+		-- which can differ from the stack size we're actually about to post once it's split, and
+		-- rescaling its (already-floored) result for a different size loses a copper here and
+		-- there since deposit isn't linear in stack size (there's a 5%-per-item surcharge for
+		-- being short of a full stack). Compute the formula directly instead, floored exactly
+		-- once, at the end - confirmed to match this server's native Auctions tab exactly.
+		local _, _, _, _, _, _, _, maxStack, _, _, vendorPrice = Atr_GetItemInfo (auctionItemLink or auctionItemName);
+		vendorPrice	= vendorPrice or 0;
+		maxStack	= maxStack or stackSize;
+		local shortBy	= math.max (maxStack - stackSize, 0);
+		local deposit	= math.floor (vendorPrice * stackSize * (minutes / 120) * (1 + shortBy * 0.05) * 0.025);
+
 		local numAuctionString = "";
 		if (Atr_Batch_NumAuctions:GetNumber() > 1) then
 			numAuctionString = "  |cffff55ff x"..Atr_Batch_NumAuctions:GetNumber();
 		end
-		
+
 		Atr_Deposit_Text:SetText (ZT("Deposit")..":");
-		Atr_ShowDepositMoney (deposit1 * Atr_StackSize(), numAuctionString);
+		Atr_ShowDepositMoney (deposit, numAuctionString);
 	else
 		Atr_Deposit_Text:SetText ("");
 		Atr_ShowDepositMoney (nil);
