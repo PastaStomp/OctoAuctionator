@@ -325,6 +325,12 @@ end
 local function Finish(msg)
 	local p = post
 	post = nil
+	-- a refill is a best-effort courtesy (see below), not a real posting attempt: fail silently,
+	-- there's nothing to report and nothing that actually went wrong with any auction
+	if p and p.refillOnly then
+		ClearSlot()
+		return
+	end
 	if p and msg and G.Atr_OnAuctionMultiSellFailureMsg then
 		Atr_OnAuctionMultiSellFailureMsg(msg)
 	elseif msg and DEFAULT_CHAT_FRAME then
@@ -349,16 +355,60 @@ local function Step()
 
 		local name, nativeCount = GetAuctionSellItemInfo()
 		if name then
+			if p.refillOnly then
+				post = nil	-- already something there (e.g. a split still settling); good enough
+				return
+			end
 			if nativeCount == p.size then
 				p.state = "ready"
 				return
 			end
 			ClearSlot()
+			p.pendingBag, p.pendingSlot = nil, nil
 			p.t = now + 0.4
 			return
 		end
 
+		if p.refillOnly then
+			-- just move whatever's left back into the sell slot as a single stack, exactly as
+			-- it already sits in the bags - no splitting. The point is to save a re-drag for the
+			-- next post, not to pre-chop the remainder into another stackSize-sized piece.
+			local list = CollectStacks(p.id)
+			local biggest
+			for _, st in ipairs(list) do
+				if st.locked then
+					p.t = now + 0.2
+					return
+				end
+				if not biggest or st.count > biggest.count then biggest = st end
+			end
+			if biggest then
+				PickupContainerItem(biggest.bag, biggest.slot)
+				ClickAuctionSellItemButton()
+			end
+			post = nil
+			return
+		end
+
 		if CursorHasItem() and G.ClearCursor then ClearCursor() end	-- leftover from a split that didn't fully settle last cycle
+
+		-- after a split, the slot we dropped the split-off piece into takes noticeably longer to
+		-- report its new contents than the source stack takes to shrink. Scanning again too soon
+		-- found the destination still reporting empty and split yet another piece off the
+		-- remainder (it looked like nothing had worked yet), snowballing into many tiny stacks.
+		-- Wait specifically for THAT slot to show the expected count before doing anything else.
+		if p.pendingBag then
+			local _, pendingCount, pendingLocked = GetContainerItemInfo(p.pendingBag, p.pendingSlot)
+			if pendingLocked or pendingCount ~= p.size then
+				if now - p.pendingSince > 3 then
+					Finish("A split didn't settle in the bags (" .. p.done .. " of " .. p.n .. " posted).")
+					return
+				end
+				p.t = now + 0.2
+				return
+			end
+			p.pendingBag, p.pendingSlot = nil, nil
+		end
 
 		local list, empty = CollectStacks(p.id)
 		for _, st in ipairs(list) do
@@ -389,6 +439,7 @@ local function Step()
 				end
 				SplitContainerItem(st.bag, st.slot, p.size)
 				PickupContainerItem(empty.bag, empty.slot)
+				p.pendingBag, p.pendingSlot, p.pendingSince = empty.bag, empty.slot, now
 				p.t = now + 0.2
 				return
 			end
@@ -404,6 +455,12 @@ local function Step()
 			Finish("Could not place the item in the auction slot (" .. p.done .. " of " .. p.n .. " posted).")
 		end
 	elseif p.state == "ready" then
+		if p.refillOnly then
+			-- the item is already sitting in the sell slot at the right size; that's the whole
+			-- point of a refill pass, so stop here instead of actually posting it
+			post = nil
+			return
+		end
 		StartAuction(p.bid, p.buyout, p.minutes)
 		p.state = "posting"
 		p.t = now
@@ -418,7 +475,14 @@ local function Step()
 				G.arg1, G.arg2 = sv1, sv2
 			end
 			if p.done >= p.n then
-				post = nil
+				-- leave whatever's left of this item sitting in the sell slot rather than
+				-- leaving it empty - posting another batch of the same item right after is
+				-- common, and this saves having to drag it back in from the bags. The "prep"
+				-- refillOnly branch moves it over as a single stack, with no splitting.
+				p.refillOnly = true
+				p.pendingBag, p.pendingSlot = nil, nil
+				p.state = "prep"
+				p.t = now + 0.3
 			else
 				p.state = "prep"
 				p.t = now + 0.3
@@ -437,14 +501,15 @@ driver:SetScript("OnUpdate", function()
 	Step()
 end)
 
-driver:RegisterEvent("UI_ERROR_MESSAGE")
+-- UI_ERROR_MESSAGE used to abort posting unconditionally on ANY such event, but that channel
+-- isn't specific to auctions - something entirely unrelated (seen in testing: "Unknown unit")
+-- can fire one mid-sequence and would wrongly cancel a posting run that wasn't actually broken.
+-- Genuine stalls are still caught by the per-state timeouts below (3s placing, 6s posting).
 driver:RegisterEvent("AUCTION_HOUSE_CLOSED")
 driver:SetScript("OnEvent", function()
 	if not post then return end
 	if event == "AUCTION_HOUSE_CLOSED" then
 		post = nil
-	elseif event == "UI_ERROR_MESSAGE" and (post.state == "placing" or post.state == "ready" or post.state == "posting") then
-		Finish("Posting stopped: " .. tostring(arg1))
 	end
 end)
 
