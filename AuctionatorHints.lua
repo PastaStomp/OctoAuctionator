@@ -658,6 +658,21 @@ end
 
 -----------------------------------------
 
+-- Atr_GetBonding looks binding up in a static per-item-ID table baked from a much later client's
+-- item database (3.3.5), which doesn't reliably match this vanilla server's actual item data (it
+-- can report an item as BOP when it isn't, or miss one that is). The tooltip passed in has already
+-- been populated by the native Set*Item call before this hook runs, so read the real bind status
+-- straight off it instead - the same approach SnapAuction (known-working on this server) uses.
+local function Atr_TooltipHasLine (tip, text)
+	local tipName = tip:GetName();
+	if not tipName or not text then return false end
+	for i = 2, math.min(tip:NumLines(), 6) do
+		local line = getglobal(tipName.."TextLeft"..i);
+		if line and line:GetText() == text then return true end
+	end
+	return false
+end
+
 local function ShowTipWithPricing (tip, link, num)
 
 	Atr_TipBeginMoney (tip);
@@ -725,9 +740,8 @@ local function ShowTipWithPricing (tip, link, num)
 
 	if (AUCTIONATOR_A_TIPS == 1) then
 		
-		local bonding = Atr_GetBonding(itemID);
-		local isBOP   = (bonding == 1);
-		local isQuest = (bonding == 4 or bonding == 5);
+		local isBOP   = Atr_TooltipHasLine(tip, ITEM_SOULBOUND);
+		local isQuest = Atr_TooltipHasLine(tip, ITEM_BIND_QUEST);
 		
 		if (isBOP) then
 			tip:AddDoubleLine (ZT("Auction")..xstring, "|cFFFFFFFF"..ZT("BOP").."  ");		

@@ -137,9 +137,16 @@ function Atr_BuildDisplayLink(itemString)
 end
 
 function Atr_GetItemInfo(x)
-	local id = ItemIdOf(x)
-	if not id then return nil end
-	local a, b, c, d, e, f, g, h, i, j = GetItemInfo("item:" .. id .. ":0:0:0")
+	-- preserve the enchant/suffix/unique fields when they're already in `x` - rebuilding the
+	-- query as bare "item:ID:0:0:0" always asked for the base item, silently dropping any random
+	-- property ("of the Owl" etc.) and returning the wrong (suffix-less) name/price lookups for it
+	local itemString = Atr_NormalizeItemLink(x)
+	if not itemString then
+		local id = ItemIdOf(x)
+		if not id then return nil end
+		itemString = "item:" .. id .. ":0:0:0"
+	end
+	local a, b, c, d, e, f, g, h, i, j = GetItemInfo(itemString)
 	if not a then return nil end
 	local name, link, rarity, ilevel, minLevel, itemType, subType, stack, equip, texture
 	if type(e) == "string" then
