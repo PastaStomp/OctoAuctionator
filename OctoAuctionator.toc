@@ -22,6 +22,7 @@ AuctionatorLocalize.lua
 AuctionatorPane.lua
 AuctionatorScan.lua
 AuctionatorQuery.lua
+AuctionatorDisenchant.lua
 AuctionatorHints.lua
 AuctionatorVendor.lua
 AuctionatorConflicts.lua

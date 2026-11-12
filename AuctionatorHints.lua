@@ -512,96 +512,41 @@ end
 
 -----------------------------------------
 
-local deTable = {};
+-- disenchant yields are looked up per item ID (AtrNS.deData, from AuctionatorDisenchant.lua) -
+-- derived from real vanilla disenchant logs, since vanilla items have no item level to bucket
+-- by (see AuctionatorDisenchant.lua for where this data comes from and its format).
 
------------------------------------------
-
-local function deKey (itemType, itemRarity)
-	local s = tostring(itemType).."_"..itemRarity
-	return s;
+function Atr_InitDETable()		-- data now loads directly from AuctionatorDisenchant.lua; nothing to do here
 end
 
 -----------------------------------------
 
-local function DEtableInsert(t, info)
-
-	local entry = {};
-
-	local x, i, n;
-	
-	entry[1]	= info[1];
-	entry[2]	= info[2];
-	
-	n = 3;
-	
-	for x = 3,getn(info),3 do
-		local nums = info[x+1];
-		if (type(nums) == "number") then
-			entry[n]   = info[x];
-			entry[n+1] = info[x+1];
-			entry[n+2] = info[x+2];
-			n = n + 3;
-		else
-			for i = nums[1],nums[2] do
-				entry[n]   = info[x]/(nums[2]-nums[1]+1);
-				entry[n+1] = i;
-				entry[n+2] = info[x+2];
-				n = n + 3;				
-			end
-		end
-	end
-	
-	table.insert (t, entry);
-
-end
-
-
------------------------------------------
-
-function Atr_InitDETable()		-- disenchant tables are for the 3.x item level system; vanilla items have no item level
-
+local function Atr_FindDEentry (itemID)
+	return AtrNS.deData and AtrNS.deData[itemID];
 end
 
 -----------------------------------------
 
-local function Atr_FindDEentry (itemType, itemRarity, itemLevel)
+local function Atr_AddDEDetailsToTip (tip, itemID, DEreqLevel)
 
-	local itemTypeNum = Atr_ItemType2AuctionClass (itemType);
-
-	local t = deTable[deKey(itemTypeNum, itemRarity)];
-
-	if (t) then
-		local n;
-		for n = 1, getn(t) do
-			
-			local ta = t[n];
-			
-			if (itemLevel >= ta[1] and itemLevel <= ta[2]) then
-				return ta;
-			end
-		end
-	end
-
-
-end
-
------------------------------------------
-
-local function Atr_AddDEDetailsToTip (tip, itemType, itemRarity, itemLevel, DEreqLevel)
-
-	local ta = Atr_FindDEentry (itemType, itemRarity, itemLevel);
+	local ta = Atr_FindDEentry (itemID);
 
 	if (ta) then
 		local x;
-		for x = 3,getn(ta),3 do
+		for x = 1,getn(ta),3 do
 			local percent = math.floor (ta[x]*100) / 100;
+			local qty = math.floor (ta[x+1]*10) / 10;
+			local matID = ta[x+2];
 
-			local deitem = Atr_GetDEitemName(ta[x+2]);
+			local deitem = Atr_GetDEitemName(matID);
 			if (deitem == nil) then
 				deitem = "???";
 			end
 
-			tip:AddLine ("  |cFFFFFFFF"..percent.."%|r   "..ta[x+1].." "..deitem);
+			local matPrice = Atr_GetAuctionPriceDE (matID);
+			local priceStr = matPrice and zc.priceToString(matPrice) or ZT("unknown");
+
+			tip:AddLine ("  |cFFFFFFFF"..percent.."%|r   "..qty.." "..deitem.."  |cFFAAAAAA("..priceStr..")|r");
 		end
 	end
 
@@ -610,38 +555,17 @@ end
 
 -----------------------------------------
 
-function Atr_DumpDETable (itemType, itemRarity)
-
-	local t = deTable[deKey(itemType, itemRarity)];
-
-	if (t) then
-		local n, x;
-		for n = 1, getn(t) do
-			local ta = t[n];
-			
-			zc.msg_pink ("iLvl: "..ta[1].."-"..ta[2]);
-			
-			for x = 3,getn(ta),3 do
-				zc.msg_pink ("   "..ta[x].."%  "..ta[x+1].."  "..Atr_GetDEitemName(ta[x+2]).."  ("..Atr_GetAuctionPrice (Atr_GetDEitemName(ta[x+2]))..")");
-			end
-		end
-	end
-
-end
-
------------------------------------------
-
-function Atr_CalcDisenchantPrice (itemType, itemRarity, itemLevel)
+function Atr_CalcDisenchantPrice (itemType, itemRarity, itemID)
 
 	if (Atr_IsWeaponType (itemType) or Atr_IsArmorType (itemType)) then
 		if (itemRarity == UNCOMMON or itemRarity == RARE or itemRarity == EPIC) then
 
 			local dePrice = 0;
 
-			local ta = Atr_FindDEentry (itemType, itemRarity, itemLevel);
+			local ta = Atr_FindDEentry (itemID);
 			if (ta) then
 				local x;
-				for x = 3,getn(ta),3 do
+				for x = 1,getn(ta),3 do
 					local price = Atr_GetAuctionPriceDE (ta[x+2]);
 					if (price) then
 						dePrice = dePrice + (ta[x] * ta[x+1] * price);
@@ -652,7 +576,7 @@ function Atr_CalcDisenchantPrice (itemType, itemRarity, itemLevel)
 			return math.floor (dePrice/100);
 		end
 	end
-	
+
 	return nil;		-- can't be disenchanted
 end
 
@@ -698,7 +622,7 @@ local function ShowTipWithPricing (tip, link, num)
 	end
 ]]--
 
-	local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, _, _, _, _, itemVendorPrice = Atr_GetItemInfo (link);
+	local itemName, itemLink, itemRarity, _, _, itemType, _, _, _, _, itemVendorPrice = Atr_GetItemInfo (link);
 
 	local itemID = zc.ItemIDfromLink (link);
 	itemID = tonumber(itemID);
@@ -709,7 +633,7 @@ local function ShowTipWithPricing (tip, link, num)
 	
 	if (AUCTIONATOR_V_TIPS == 1) then vendorPrice	= itemVendorPrice; end;
 	if (AUCTIONATOR_A_TIPS == 1) then auctionPrice	= Atr_GetAuctionPrice (itemName); end;
-	if (AUCTIONATOR_D_TIPS == 1 and itemLevel) then dePrice		= Atr_CalcDisenchantPrice (itemType, itemRarity, itemLevel); end;
+	if (AUCTIONATOR_D_TIPS == 1 and itemID) then dePrice		= Atr_CalcDisenchantPrice (itemType, itemRarity, itemID); end;
 	
 	local xstring = "";
 	local showStackPrices = IsShiftKeyDown();
@@ -758,9 +682,9 @@ local function ShowTipWithPricing (tip, link, num)
 
 	if (AUCTIONATOR_D_TIPS == 1 and dePrice ~= nil) then
 		if (dePrice > 0) then
-			Atr_TipAddMoneyLine (tip, ZT("Disenchant")..xstring, dePrice);
+			Atr_TipAddMoneyLine (tip, ZT("Disenchant Avg.")..xstring, dePrice);
 		else
-			tip:AddDoubleLine (ZT("Disenchant")..xstring, "|cFFFFFFFF"..ZT("unknown").."  ");
+			tip:AddDoubleLine (ZT("Disenchant Avg.")..xstring, "|cFFFFFFFF"..ZT("unknown").."  ");
 		end
 	end
 
@@ -773,7 +697,7 @@ local function ShowTipWithPricing (tip, link, num)
 	if (AUCTIONATOR_DE_DETAILS_TIPS == 5) then showDetails = true; end;
 	
 	if (showDetails and dePrice ~= nil) then
-		Atr_AddDEDetailsToTip (tip, itemType, itemRarity, itemLevel, Atr_DEReqLevel(itemID));
+		Atr_AddDEDetailsToTip (tip, itemID, Atr_DEReqLevel(itemID));
 	end
 
 	tip:Show()
