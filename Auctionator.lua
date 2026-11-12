@@ -1096,11 +1096,12 @@ end
 
 function Atr_OnAuctionMultiSellFailure()
 
-	-- add one more.  no good reason other than it just seems to work
-	Atr_AddToScan (gJustPosted_ItemName, gJustPosted_StackSize, gJustPosted_BuyoutPrice, 1);
-
-	Atr_LogMsg (gJustPosted_ItemLink, gJustPosted_StackSize, gJustPosted_BuyoutPrice, gMS_stacksPrev + 1);
-	Atr_AddHistoricalPrice (gJustPosted_ItemName, gJustPosted_BuyoutPrice / gJustPosted_StackSize, gJustPosted_StackSize, gJustPosted_ItemLink);
+	-- each stack that actually posted already went through Atr_OnAuctionMultiSellUpdate (which
+	-- accounts for it via Atr_AddToScan); only report a success message here if some stacks truly
+	-- went through, and only for that many - never claim one more succeeded than we actually saw.
+	if (gMS_stacksPrev > 0) then
+		Atr_LogMsg (gJustPosted_ItemLink, gJustPosted_StackSize, gJustPosted_BuyoutPrice, gMS_stacksPrev);
+	end
 
 	if (gCurrentPane.activeScan) then
 		gCurrentPane.activeScan.whenScanned = 0;

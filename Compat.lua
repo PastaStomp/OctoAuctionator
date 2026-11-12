@@ -277,25 +277,26 @@ local post = nil
 local driver = CreateFrame("Frame", "AtrCompatDriver")
 local acc = 0
 
-local function FindStack(id, size)
-	local best, bestCount
+-- all bag slots holding `id`, plus one empty slot to split into. Splitting a bigger stack
+-- straight into the auction sell slot does not carry the split amount through on this server
+-- (confirmed: the source stack is left untouched and the full stack ends up in the sell slot
+-- regardless of the requested split size) - but splitting into an empty bag slot first, letting
+-- it settle into its own real stack, and placing THAT into the sell slot on a later pass works
+-- correctly. This mirrors the approach used by SnapAuction, a known-working addon on this server.
+local function CollectStacks(id)
+	local list, empty = {}, nil
 	for bag = 0, 4 do
 		for slot = 1, (GetContainerNumSlots(bag) or 0) do
 			local link = GetContainerItemLink(bag, slot)
-			if link and LinkId(link) == id then
+			if not link then
+				empty = empty or { bag = bag, slot = slot }
+			elseif LinkId(link) == id then
 				local _, count, locked = GetContainerItemInfo(bag, slot)
-				if count and not locked and count >= size then
-					if count == size then return bag, slot, count end
-					if not bestCount or count < bestCount then
-						best = { bag, slot }
-						bestCount = count
-					end
-				end
+				tinsert(list, { bag = bag, slot = slot, count = count or 1, locked = locked })
 			end
 		end
 	end
-	if best then return best[1], best[2], bestCount end
-	return nil
+	return list, empty
 end
 
 local function ClearSlot()
@@ -329,9 +330,10 @@ local function Step()
 	end
 	if p.state == "prep" then
 		if now < p.t then return end
-		local link, name, count = Atr_SellSlotLink()
+
+		local name, nativeCount = GetAuctionSellItemInfo()
 		if name then
-			if LinkId(link) == p.id and count == p.size then
+			if nativeCount == p.size then
 				p.state = "ready"
 				return
 			end
@@ -339,22 +341,46 @@ local function Step()
 			p.t = now + 0.4
 			return
 		end
-		local bag, slot, count2 = FindStack(p.id, p.size)
-		if not bag then
-			Finish("Not enough items to finish posting (" .. p.done .. " of " .. p.n .. " posted).")
-			return
+
+		if CursorHasItem() and G.ClearCursor then ClearCursor() end	-- leftover from a split that didn't fully settle last cycle
+
+		local list, empty = CollectStacks(p.id)
+		for _, st in ipairs(list) do
+			if st.locked then
+				p.t = now + 0.2	-- still settling from a previous split; wait
+				return
+			end
 		end
-		if CursorHasItem() and G.ClearCursor then ClearCursor() end
-		if count2 == p.size then
-			PickupContainerItem(bag, slot)
-		else
-			SplitContainerItem(bag, slot, p.size)
+
+		-- a stack of exactly the right size already exists: straight into the sell slot
+		for _, st in ipairs(list) do
+			if st.count == p.size then
+				PickupContainerItem(st.bag, st.slot)
+				ClickAuctionSellItemButton()
+				p.state = "placing"
+				p.t = now
+				return
+			end
 		end
-		ClickAuctionSellItemButton()
-		p.state = "placing"
-		p.t = now
+
+		-- only bigger stacks: split the needed amount into an empty slot and let it settle
+		-- there before trying to sell it (see CollectStacks' comment above)
+		for _, st in ipairs(list) do
+			if st.count > p.size then
+				if not empty then
+					Finish("Need an empty bag slot to split stacks (" .. p.done .. " of " .. p.n .. " posted).")
+					return
+				end
+				SplitContainerItem(st.bag, st.slot, p.size)
+				PickupContainerItem(empty.bag, empty.slot)
+				p.t = now + 0.2
+				return
+			end
+		end
+
+		Finish("Not enough items to finish posting (" .. p.done .. " of " .. p.n .. " posted).")
 	elseif p.state == "placing" then
-		local link, name, count = Atr_SellSlotLink()
+		local name, _, count = GetAuctionSellItemInfo()
 		if name and count == p.size then
 			p.state = "ready"
 		elseif now - p.t > 3 then
