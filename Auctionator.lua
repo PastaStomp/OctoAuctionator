@@ -2109,6 +2109,15 @@ function Atr_OnAuctionHouseShow()
 
 	gOpenAllBags = AUCTIONATOR_OPEN_ALL_BAGS;
 
+	-- the stock "Auctions" tab's OnShow is what actually asks the server for the player's owned
+	-- auctions; our tabs hide that frame instead of showing it, so GetNumAuctionItems("owner")
+	-- stayed empty (and the More tab's "Active Items" list with it) until the player manually
+	-- clicked the vanilla tab at least once. Trigger that OnShow ourselves instead.
+	if (AuctionFrameAuctions and not AuctionFrameAuctions:IsShown()) then
+		AuctionFrameAuctions:Show();
+		AuctionFrameAuctions:Hide();
+	end
+
 	if (AUCTIONATOR_DEFTAB == 1) then		Atr_SelectPane (SELL_TAB);	end
 	if (AUCTIONATOR_DEFTAB == 2) then		Atr_SelectPane (BUY_TAB);	end
 	if (AUCTIONATOR_DEFTAB == 3) then		Atr_SelectPane (MORE_TAB);	end
