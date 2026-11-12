@@ -112,6 +112,30 @@ function Atr_GetSellValueById(id)
 	return nil
 end
 
+-- SetHyperlink/GetItemInfo want the bare "item:id:ench:suffix:unique" string, never the full
+-- "|cxxxxxxxx|Hitem:...|h[Name]|h|r" hyperlink. This server sometimes hands back something that is
+-- neither - e.g. just the bracketed display name "[Heavy Stone]" - instead of a real link (seen from
+-- GetAuctionSellItemInfo, and possibly GetItemInfo too). Extract the bare form out of whatever we're
+-- given, or return nil if it isn't in there at all, rather than passing bad data to SetHyperlink.
+function Atr_NormalizeItemLink(link)
+	if not link then return nil end
+	local _, _, itemString = string.find(tostring(link), "(item:%d+:%d+:%d+:%d+)")
+	return itemString
+end
+
+-- the inverse of Atr_NormalizeItemLink: builds a clickable chat/tooltip hyperlink
+-- ("|cxxxxxxxx|Hitem:...|h[Name]|h|r") from the bare item string, for anywhere we want to print
+-- a link in a chat message rather than hand it to SetHyperlink.
+function Atr_BuildDisplayLink(itemString)
+	if not itemString then return nil end
+	local name, _, rarity = Atr_GetItemInfo(itemString)
+	if not name then return itemString end
+	local hex = "ffffffff"
+	local _, _, _, h = GetItemQualityColor(rarity or 1)
+	if h then hex = h end
+	return hex .. "|H" .. itemString .. "|h[" .. name .. "]|h|r"
+end
+
 function Atr_GetItemInfo(x)
 	local id = ItemIdOf(x)
 	if not id then return nil end
@@ -125,6 +149,7 @@ function Atr_GetItemInfo(x)
 		-- 2.x+ layout (extended clients)
 		name, link, rarity, ilevel, minLevel, itemType, subType, stack, equip, texture = a, b, c, d, e, f, g, h, i, j
 	end
+	link = Atr_NormalizeItemLink(link)
 	if link then Atr_RememberItemLink(name, link) end
 	return name, link, rarity, ilevel, minLevel, itemType, subType, stack, equip, texture, Atr_GetSellValueById(id)
 end
@@ -162,16 +187,37 @@ local function LinkId(link)
 	return id and tonumber(id) or nil
 end
 
+-- a bare display name like "Heavy Stone", not a link: find a matching item still in the bags.
+-- GetContainerItemLink returns the full "|c..|H..|h[Name]|h|r" hyperlink, so normalize it down
+-- to the bare form SetHyperlink/GetItemInfo actually want.
+local function FindBagItemLinkByName(name)
+	if not name then return nil end
+	local lname = string.lower(name)
+	for bag = 0, 4 do
+		for slot = 1, (GetContainerNumSlots(bag) or 0) do
+			local link = GetContainerItemLink(bag, slot)
+			if link then
+				local _, _, nm = string.find(link, "%[(.-)%]")
+				if nm and string.lower(nm) == lname then return Atr_NormalizeItemLink(link) end
+			end
+		end
+	end
+	return nil
+end
+
 -- link of the item currently sitting in the auction sell slot
 function Atr_SellSlotLink()
-	local name, texture, count, quality, canUse, price, maxStack, link = GetAuctionSellItemInfo()
+	-- this server's GetAuctionSellItemInfo does NOT return a real link as its 8th value (despite
+	-- what older comments here assumed) - it's just the bracketed display name, e.g. "[Heavy Stone]".
+	-- Always resolve the link ourselves instead of trusting that value.
+	local name, texture, count, quality, canUse, price, maxStack = GetAuctionSellItemInfo()
 	if not name then return nil end
-	if link then
-		Atr_RememberItemLink(name, link)
-		return link, name, count, maxStack, price
+	local link = Atr_NormalizeItemLink(linkByName[string.lower(name)])
+	if not link then
+		link = FindBagItemLinkByName(name)
+		if link then Atr_RememberItemLink(name, link) end
 	end
-	local l = linkByName[string.lower(name)]
-	return l, name, count, maxStack, price
+	return link, name, count, maxStack, price
 end
 
 -- total of an item (by name) in bags; a stack inside the auction slot is counted once

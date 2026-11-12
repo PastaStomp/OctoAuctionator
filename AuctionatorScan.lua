@@ -156,8 +156,9 @@ end
 
 function AtrScan:UpdateItemLink (itemLink)
 
+	itemLink = Atr_NormalizeItemLink (itemLink);		-- GetAuctionItemLink etc. can hand back the full "|c..|H..|h[Name]|h|r" form or (on this server) sometimes junk; never trust it as-is
 	self.itemLink = itemLink;
-	
+
 	if (itemLink) then
 	
 		Atr_AddToItemLinkCache (self.itemName, itemLink);

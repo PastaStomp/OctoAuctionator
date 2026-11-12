@@ -540,6 +540,8 @@
 							<OnClick>Atr_SellItemButton_OnClick(this, arg1);</OnClick>
 							<OnDragStart>Atr_SellItemButton_OnClick(this, "LeftButton");</OnDragStart>
 							<OnReceiveDrag>Atr_SellItemButton_OnClick(this, "LeftButton");</OnReceiveDrag>
+							<OnEnter>Atr_ShowRecTooltip(this);</OnEnter>
+							<OnLeave>Atr_HideRecTooltip();</OnLeave>
 						</Scripts>
 						<HighlightTexture alphaMode="ADD" file="Interface\Buttons\ButtonHilight-Square"/>
 					</Button>

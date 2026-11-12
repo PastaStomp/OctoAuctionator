@@ -1121,6 +1121,8 @@ end
 
 function Atr_LogMsg (itemlink, itemcount, price, numstacks)
 
+	itemlink = Atr_BuildDisplayLink (itemlink) or itemlink;
+
 	local logmsg = string.format (ZT("Auction created for %s"), itemlink);
 	
 	if (numstacks > 1) then
@@ -2057,21 +2059,34 @@ end
 
 -----------------------------------------
 
-function Atr_ShowRecTooltip ()
-	
+local gRecTooltipAnchor;
+
+function Atr_ShowRecTooltip (anchorFrame)
+
+	-- Atr_Idle re-calls this every 0.2s with no argument to keep the price fresh while the
+	-- tooltip is up; remember whichever icon was actually hovered so the refresh doesn't
+	-- jump the tooltip back onto Atr_RecommendItem_Tex.
+	anchorFrame = anchorFrame or gRecTooltipAnchor or Atr_RecommendItem_Tex;
+	gRecTooltipAnchor = anchorFrame;
+
 	local link = gCurrentPane.activeScan.itemLink;
 	local num  = Atr_StackSize();
-	
+
 	if (not link) then
 		link = gJustPosted_ItemLink;
 		num  = gJustPosted_StackSize;
 	end
-	
+
+	link = Atr_NormalizeItemLink (link);
+
 	if (link) then
 		if (num < 1) then num = 1; end;
-		
-		GameTooltip:SetOwner(Atr_RecommendItem_Tex, "ANCHOR_RIGHT");
-		GameTooltip:SetHyperlink (link, num);
+
+		GameTooltip:SetOwner(anchorFrame, "ANCHOR_RIGHT");
+		if (not pcall(GameTooltip.SetHyperlink, GameTooltip, link, num)) then	-- never break the tooltip over a bad link
+			GameTooltip:SetText(link);
+			GameTooltip:Show();
+		end
 		gCurrentPane.tooltipvisible = true;
 	end
 
@@ -2080,8 +2095,9 @@ end
 -----------------------------------------
 
 function Atr_HideRecTooltip ()
-	
+
 	gCurrentPane.tooltipvisible = nil;
+	gRecTooltipAnchor = nil;
 	GameTooltip:Hide();
 
 end
@@ -2850,11 +2866,14 @@ end
 
 function Atr_ShowLineTooltip (self)
 
-	local itemLink = self.itemLink;
-		
+	local itemLink = Atr_NormalizeItemLink (self.itemLink);
+
 	if (itemLink) then
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT", -280);
-		GameTooltip:SetHyperlink (itemLink, 1);
+		if (not pcall(GameTooltip.SetHyperlink, GameTooltip, itemLink, 1)) then	-- never break the tooltip over a bad link
+			GameTooltip:SetText(itemLink);
+			GameTooltip:Show();
+		end
 	end
 end
 
@@ -3359,7 +3378,9 @@ end
 -----------------------------------------
 
 function Atr_LogCancelAuction(numCancelled, itemLink, stackSize)
-	
+
+	itemLink = Atr_BuildDisplayLink (itemLink) or itemLink;
+
 	local SSstring = "";
 	if (stackSize and stackSize > 1) then
 		SSstring = "|cff00ddddx"..stackSize;
