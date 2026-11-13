@@ -1,4 +1,4 @@
-# OctoAuctionator 1.0.0
+# OctoAuctionator
 
 The classic **Auctionator 2.6.2** auction house (Buy / Sell / More... tabs) ported to **OctoWoW 1.18.1** (1.12.1 client).
 A free addon.
@@ -21,7 +21,7 @@ no "get all". A normal search is a page or a few; a Full Scan of a big auction h
 
 ## Install
 
-1. Download **OctoAuctionator-1.0.0.zip** from Releases or the forum attachment.
+1. Download the latest **OctoAuctionator-X.X.X.zip** from Releases or the forum attachment.
 2. Extract it into your WoW `Interface/AddOns` folder.
 3. Restart WoW and enable **OctoAuctionator** at character selection.
 
