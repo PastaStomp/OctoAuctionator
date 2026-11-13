@@ -4,7 +4,14 @@ The classic **Auctionator 2.6.2** auction house addon (Buy / Sell / More... tabs
 
 Fixed and improved. Free and open-source.
 
-**Made by John The Baptist.**
+<img src="screenshots/octoauctionator-buy.jpg" alt="OctoAuctionator Screenshot Buy" width="600" height="340">
+
+<img src="screenshots/octoauctionator-sell.jpg" alt="OctoAuctionator Screenshot Sell" width="300" height="170">
+<img src="screenshots/octoauctionator-listings.jpg" alt="OctoAuctionator Screenshot Listings" width="300" height="170">
+
+<img src="screenshots/octoauctionator-options-tooltips.jpg" alt="OctoAuctionator Screenshot Options Listings" width="300" height="293">
+<img src="screenshots/octoauctionator-fullscan.jpg" alt="OctoAuctionator Screenshot Full Scan" width="300" height="293">
+
 
 ## What it does
 
@@ -35,13 +42,9 @@ Turn off other auction house addons (aux, other Auctionator versions) to avoid t
 - The **Auctionator** button (top right) opens the options; **Full Scan...** starts a full scan.
 - `/atr clear fullscandb` clears the stored scan prices, `/atr clear posthistory` clears your posting history.
 
-## Screenshots
-
-![Buy tab](screenshots/octoauctionator-buy.jpg)
-
-![Sell tab](screenshots/octoauctionator-sell.jpg)
-
 ## Credits
+
+**Made by John The Baptist.**
 
 Original addon: **Auctionator 2.6.2 by Zirco** (WoWInterface). This version keeps his interface and code and adapts
 them to the 1.12 client and this server.
