@@ -1,8 +1,8 @@
 # OctoAuctionator - Fixed and improved
 
-The classic **Auctionator 2.6.2** auction house (Buy / Sell / More... tabs) ported to **OctoWoW 1.18.1** (1.12.1 client).
-Fixed and improved.
-A free addon.
+The classic **Auctionator 2.6.2** auction house addon (Buy / Sell / More... tabs) ported to **OctoWoW 1.18.1** (1.12.1 client).
+
+Fixed and improved. Free and open-source.
 
 **Made by John The Baptist.**
 
@@ -13,12 +13,11 @@ A free addon.
   cheapest-first / most-expensive-first. Recent searches and your own shopping lists sit on the left.
 - **Sell:** drop an item in the slot and it searches that item, shows the current auctions and recommends a buyout
   just under the cheapest one. Set the stack size and number of stacks, pick 6 / 24 / 72 hours, Create Auction.
-- **More...:** your own items: what you have on the AH right now (check for undercuts) and everything you posted before.
+- **Listings:** your listed items: what you have on the AH right now (check for undercuts) and everything you posted before.
 - **Full Scan:** optional. Scans the whole auction house and stores the lowest prices for the tooltips.
 - **Tooltips:** auction price of an item (and the vendor price if you use SellValue), shown with the game's own coins.
 
-**About speed:** the server sends 50 auctions per page and only while the auction window is open; the 1.12 client has
-no "get all". A normal search is a page or a few; a Full Scan of a big auction house takes a while.
+**About speed:** 1.12.1 auction house browsing is quite slow, since the client has a 5 second delay requests, so I'd recommend using AuctionQueryThrottle.dll. More info and download here ![AuctionQueryThrottle](https://github.com/brues-code/AuctionQueryThrottle). It is loaded via VanillaFixes by adding it to your dlls.txt.
 
 ## Install
 
