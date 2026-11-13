@@ -6,11 +6,9 @@ Fixed and improved. Free and open-source.
 
 <img src="screenshots/octoauctionator-buy.jpg" alt="OctoAuctionator Screenshot Buy" width="600" height="340">
 
-<img src="screenshots/octoauctionator-sell.jpg" alt="OctoAuctionator Screenshot Sell" width="300" height="170">
-<img src="screenshots/octoauctionator-listings.jpg" alt="OctoAuctionator Screenshot Listings" width="300" height="170">
+<img src="screenshots/octoauctionator-sell.jpg" alt="OctoAuctionator Screenshot Sell" width="300" height="170"><img src="screenshots/octoauctionator-listings.jpg" alt="OctoAuctionator Screenshot Listings" width="300" height="170">
 
-<img src="screenshots/octoauctionator-options-tooltips.jpg" alt="OctoAuctionator Screenshot Options Listings" width="300" height="293">
-<img src="screenshots/octoauctionator-fullscan.jpg" alt="OctoAuctionator Screenshot Full Scan" width="300" height="293">
+<img src="screenshots/octoauctionator-options-tooltips.jpg" alt="OctoAuctionator Screenshot Options Listings" width="300" height="293"><img src="screenshots/octoauctionator-fullscan.jpg" alt="OctoAuctionator Screenshot Full Scan" width="300" height="293">
 
 
 ## What it does
