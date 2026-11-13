@@ -8,7 +8,7 @@ Fixed and improved. Free and open-source.
 
 <img src="screenshots/octoauctionator-sell.jpg" alt="OctoAuctionator Screenshot Sell" width="300" height="170"><img src="screenshots/octoauctionator-listings.jpg" alt="OctoAuctionator Screenshot Listings" width="300" height="170">
 
-<img src="screenshots/octoauctionator-options-tooltips.jpg" alt="OctoAuctionator Screenshot Options Listings" width="300" height="293"><img src="screenshots/octoauctionator-fullscan.jpg" alt="OctoAuctionator Screenshot Full Scan" width="300" height="293">
+<img src="screenshots/octoauctionator-options-tooltips.jpg" alt="OctoAuctionator Screenshot Options Listings" width="200" height="173"><img src="screenshots/octoauctionator-tooltip.jpg" alt="OctoAuctionator Screenshot Tooltip" width="200" height="173"><img src="screenshots/octoauctionator-fullscan.jpg" alt="OctoAuctionator Screenshot Full Scan" width="200" height="173">
 
 
 ## What it does
