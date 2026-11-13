@@ -246,13 +246,25 @@
 	</Button>
 
 
+	<Font name="Atr_UCCountFont" inherits="NumberFontNormalSmall" virtual="true">
+		<FontHeight><AbsValue val="10"/></FontHeight>
+		<Color r="1" g="1" b="1"/>
+	</Font>
+
 	<Button name="Atr_HEntryTemplate" virtual="true" hidden="true">
-		<Size><AbsDimension x="174" y="16" /></Size>		
+		<Size><AbsDimension x="174" y="32" /></Size>		<!-- actual height/position is set per-redraw; see Atr_DisplayHlist / Atr_SList:DisplayX -->
 		<Layers>
 			<Layer level="BACKGROUND">
-				<FontString name="$parent_EntryText" inherits="GameFontHighlightSmall" justifyH="LEFT">
-					<Size><AbsDimension x="174" y="16" /></Size>
-					<Anchors><Anchor point="LEFT"><Offset><AbsDimension x="2"/></Offset></Anchor></Anchors>
+				<Texture name="$parent_ItemIcon" hidden="true">
+					<Size><AbsDimension x="26" y="26" /></Size>
+					<Anchors><Anchor point="LEFT"><Offset><AbsDimension x="2" y="1"/></Offset></Anchor></Anchors>
+				</Texture>
+				<FontString name="$parent_ItemCount" inherits="Atr_UCCountFont" justifyH="RIGHT" justifyV="BOTTOM" hidden="true">
+					<Anchors><Anchor point="BOTTOMRIGHT" relativeTo="$parent_ItemIcon" relativePoint="BOTTOMRIGHT"/></Anchors>
+				</FontString>
+				<FontString name="$parent_EntryText" inherits="GameFontHighlightSmall" justifyH="LEFT" justifyV="MIDDLE">
+					<Size><AbsDimension x="174" y="32" /></Size>
+					<Anchors><Anchor point="LEFT"><Offset><AbsDimension x="2" y="0"/></Offset></Anchor></Anchors>
 				</FontString>
 			</Layer>
 		</Layers>
@@ -439,7 +451,7 @@
 				<Anchors><Anchor point="TOPLEFT"><Offset><AbsDimension x="-193" y="-75"/></Offset></Anchor></Anchors>
 				<Scripts>
 					<OnVerticalScroll>
-						FauxScrollFrame_OnVerticalScroll(16, Atr_DisplayHlist); 
+						Atr_Hlist_OnVerticalScroll();
 					</OnVerticalScroll>
 				</Scripts>
 			</ScrollFrame>

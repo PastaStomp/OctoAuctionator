@@ -7,7 +7,8 @@ local zc = addonTable.zc;
 Atr_SList = {};
 Atr_SList.__index = Atr_SList;
 
-local SLITEMS_NUM_LINES = 15;
+local SLITEMS_NUM_LINES = ATR_HLIST_FRAME_COUNT;	-- back to compact rows; uses every frame Auctionator.lua creates
+SLIST_ROW_HEIGHT = 18;		-- global: Atr_Hlist_OnVerticalScroll (Auctionator.lua) needs this too. ~16px original + 10%
 
 local gCurrentSList;
 
@@ -59,15 +60,62 @@ end
 
 -----------------------------------------
 
+-- search text doesn't always name one specific item exactly (a fuzzy search can match several),
+-- so use whatever the just-finished search locked onto as "the" item for that text; otherwise
+-- fall back to a direct name lookup (works for exact item names already in the client's cache)
+function Atr_GetBestMatchIcon (itemName)
+
+	local currentPane = Atr_GetCurrentPane();
+
+	if (currentPane and currentPane.activeSearch
+		and zc.StringSame (currentPane.activeSearch.origSearchText, itemName)) then
+
+		local scn = currentPane.activeSearch:GetFirstScan();	-- "best" = first of the sorted results, even for an ambiguous multi-item match
+		if (scn and scn.itemLink) then
+			return Atr_GetItemIcon (scn.itemLink);
+		end
+	end
+
+	return Atr_GetItemIcon (itemName);
+
+end
+
+-----------------------------------------
+
+-- refreshes the cached icon for itemName on every shopping list (incl. Recent Searches) it
+-- already appears on, so re-running a search updates a stale/missing icon in place
+function Atr_RefreshSListIcons (itemName)
+
+	local icon = Atr_GetBestMatchIcon (itemName);
+
+	local num = getn (AUCTIONATOR_SHOPPING_LISTS);
+	local x;
+
+	for x = 1,num do
+		local slist = AUCTIONATOR_SHOPPING_LISTS[x];
+		local idx = slist:FindItemIndex (itemName);
+		if (idx > 0) then
+			slist.icons = slist.icons or {};
+			slist.icons[slist.items[idx]] = icon;
+		end
+	end
+
+end
+
+-----------------------------------------
+
 function Atr_SList:AddItem (itemName)
 
 	if (itemName == "" or itemName == nil) then
 		return;
 	end
 
+	self.icons = self.icons or {};
+	self.icons[itemName] = Atr_GetBestMatchIcon (itemName);
+
 	if (self.isRecents) then
 		table.insert (self.items, 1, itemName);
-		
+
 		while (getn(self.items) > 50) do		-- max 50 items on recents list
 			table.remove (self.items);
 		end
@@ -76,7 +124,7 @@ function Atr_SList:AddItem (itemName)
 		self.isSorted = false;
 	end
 
-	
+
 end
 
 -----------------------------------------
@@ -85,9 +133,12 @@ function Atr_SList:RemoveItem (itemName)
 
 	local num = getn(self.items);
 	local n;
-	
+
 	for n = 1,num do
 		if (zc.StringSame (self.items[n], itemName)) then
+			if (self.icons) then
+				self.icons[self.items[n]] = nil;
+			end
 			table.remove (self.items, n);
 			return;
 		end
@@ -132,23 +183,34 @@ function Atr_SList:DisplayX ()
 	local line;							-- 1 through NN of our window to scroll
 	local dataOffset;					-- an index into our data calculated from the scroll offset
 
-	FauxScrollFrame_Update (Atr_Hlist_ScrollFrame, numrows, SLITEMS_NUM_LINES, 16);
+	FauxScrollFrame_Update (Atr_Hlist_ScrollFrame, numrows, SLITEMS_NUM_LINES, SLIST_ROW_HEIGHT);
 
 	for line = 1,SLITEMS_NUM_LINES do
 
 		currentPane.hlistScrollOffset = FauxScrollFrame_GetOffset (Atr_Hlist_ScrollFrame);
-		
+
 		dataOffset = line + currentPane.hlistScrollOffset;
 
 		local lineEntry = getglobal ("AuctionatorHEntry"..line);
 
 		lineEntry:SetID(dataOffset);
+		lineEntry:SetHeight (SLIST_ROW_HEIGHT);
+		lineEntry:SetPoint ("TOPLEFT", 0, -5 - ((line-1)*SLIST_ROW_HEIGHT));
 
 		local slItem = self.items[dataOffset];
-		
+
 		if (dataOffset <= numrows and slItem) then
 
-			local lineEntry_text = getglobal("AuctionatorHEntry"..line.."_EntryText");
+			local lineEntry_text	= getglobal("AuctionatorHEntry"..line.."_EntryText");
+			local lineEntry_icon	= getglobal("AuctionatorHEntry"..line.."_ItemIcon");
+			local lineEntry_count	= getglobal("AuctionatorHEntry"..line.."_ItemCount");
+
+			lineEntry_icon:Hide();		-- this list never shows an item icon
+			lineEntry_count:Hide();
+
+			lineEntry_text:SetHeight (SLIST_ROW_HEIGHT);
+			lineEntry_text:SetPoint ("LEFT", lineEntry, "LEFT", 2, 0);
+			lineEntry_text:SetWidth (170);
 
 			lineEntry_text:SetText		(Atr_AbbrevItemName (slItem));
 			lineEntry_text:SetTextColor	(.6,.6,.6);
@@ -224,7 +286,9 @@ function Atr_Shop_OnFinishScan ()
 	local searchText = currentPane.activeSearch.origSearchText;
 
 	Atr_Search_Box:SetText (searchText);
-	
+
+	Atr_RefreshSListIcons (searchText);
+
 	local recentsList = AUCTIONATOR_SHOPPING_LISTS[1];
 	if (recentsList) then
 

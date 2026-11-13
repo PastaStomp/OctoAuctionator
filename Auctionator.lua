@@ -92,9 +92,12 @@ local gStartingTime			= time();
 local gHentryTryAgain		= nil;
 local gCondensedThisSession = {};
 
-local ITEM_HIST_NUM_LINES = 20;
+local ITEM_HIST_NUM_LINES = 10;		-- Listings-tab rows per page, at ITEM_HIST_ROW_HEIGHT each
+ITEM_HIST_ROW_HEIGHT = 32;			-- global: AuctionatorShop.lua's scroll handler needs this too
+ATR_HLIST_FRAME_COUNT = 13;			-- global: total AuctionatorHEntry frames to create - the Buy tab's SLITEMS_NUM_LINES needs more (smaller) rows than the Listings tab
 
 local gActiveAuctions = {};
+local gActiveAuctionIcons = {};		-- textures captured straight off the native "owner" auction query - always available instantly, unlike GetItemInfo-by-name
 
 local gHlistNeedsUpdate = false;
 
@@ -663,14 +666,14 @@ function Atr_Init()
 	recommendElements[6] = getglobal ("Atr_Recommend_Basis_Text");
 	recommendElements[7] = getglobal ("Atr_RecommendItem_Tex");
 
-	-- create the lines that appear in the item history scroll pane
+	-- create the lines that appear in the item history scroll pane / Buy-tab shopping lists.
+	-- height and position are set per-redraw (see Atr_DisplayHlist / Atr_SList:DisplayX) since
+	-- the two lists use different row heights; just create enough frames for the taller of the two.
 
 	local line, n;
 
-	for n = 1, ITEM_HIST_NUM_LINES do
-		local y = -5 - ((n-1)*16);
+	for n = 1, ATR_HLIST_FRAME_COUNT do
 		line = CreateFrame("BUTTON", "AuctionatorHEntry"..n, Atr_Hlist, "Atr_HEntryTemplate");
-		line:SetPoint("TOPLEFT", 0, y);
 	end
 
 	Atr_ShowHide_StartingPrice();
@@ -1162,6 +1165,7 @@ function Atr_OnAuctionOwnedUpdate ()
 	end;
 
 	gActiveAuctions = {};		-- always flush this cache
+	gActiveAuctionIcons = {};
 
 	if (gJustPosted_ItemName) then
 
@@ -2602,32 +2606,44 @@ end
 function Atr_BuildActiveAuctions ()
 
 	gActiveAuctions = {};
-	
+	gActiveAuctionIcons = {};
+
 	local i = 1;
 	while (true) do
-		local name, _, count = GetAuctionItemInfo ("owner", i);
+		local name, texture, count = GetAuctionItemInfo ("owner", i);
 		if (name == nil) then
 			break;
 		end
 
-		if (count > 0) then		-- count is 0 for sold items
-			if (gActiveAuctions[name] == nil) then
-				gActiveAuctions[name] = 1;
-			else
-				gActiveAuctions[name] = gActiveAuctions[name] + 1;
+		if (count > 0) then		-- count is 0 for sold items; count here is this listing's stack size, so sum it to get the total quantity you have up
+			gActiveAuctions[name] = (gActiveAuctions[name] or 0) + count;
+
+			if (texture and not gActiveAuctionIcons[name]) then
+				gActiveAuctionIcons[name] = texture;
 			end
 		end
-		
+
 		i = i + 1;
 	end
 end
 
 -----------------------------------------
 
-function Atr_GetUCIcon (itemName)
+local ATR_UNKNOWN_ITEM_ICON = "Interface\\Icons\\INV_Misc_QuestionMark";
 
-	local icon = "    "
+-- prefer the texture straight off the native "owner" auction query (instant, no item-cache wait);
+-- fall back to the usual by-name lookup, then to the standard "unknown item" question mark
+function Atr_GetListingIcon (itemName)
+	return gActiveAuctionIcons[itemName] or Atr_GetItemIcon (itemName) or ATR_UNKNOWN_ITEM_ICON;
+end
 
+-----------------------------------------
+
+-- "safe" (all your auctions at/below the current best price), "partial" (some but not all are),
+-- "undercut" (even your best is beaten), or nil (no scan data to judge by yet)
+function Atr_GetUCStatus (itemName)
+
+	local status = nil;
 	local undercutFound = false;
 
 	local scan = Atr_FindScan (itemName);
@@ -2636,12 +2652,12 @@ function Atr_GetUCIcon (itemName)
 		local absBestPrice = scan.absoluteBest.itemPrice;
 
 		if (scan.yourBestPrice <= absBestPrice and scan.yourWorstPrice > absBestPrice) then
-			icon = "|cffffd100[~]|r "
+			status = "partial";
 			undercutFound = true;
 		elseif (scan.yourBestPrice <= absBestPrice) then
-			icon = "|cff40ff40[+]|r "
+			status = "safe";
 		else
-			icon = "|cffff4040[-]|r "
+			status = "undercut";
 			undercutFound = true;
 		end
 	end
@@ -2650,11 +2666,58 @@ function Atr_GetUCIcon (itemName)
 		gAtr_CheckingActive_NumUndercuts = gAtr_CheckingActive_NumUndercuts + 1;
 	end
 
-	return icon;
+	return status;
 
 end
 
 -----------------------------------------
+
+function Atr_GetUCIcon (itemName)
+
+	local status = Atr_GetUCStatus (itemName);
+
+	if (status == "partial") then
+		return "|cffffd100[~]|r ";
+	elseif (status == "safe") then
+		return "|cff40ff40[+]|r ";
+	elseif (status == "undercut") then
+		return "|cffff4040[-]|r ";
+	end
+
+	return "    ";
+
+end
+
+-----------------------------------------
+
+local UC_TEXT_COLORS = {
+	safe		= {0.3, 1.0, 0.3},
+	partial		= {1.0, 0.82, 0.0},
+	undercut	= {1.0, 0.3, 0.3},
+};
+local UC_TEXT_COLOR_DEFAULT = {1.0, 1.0, 1.0};
+
+-- colors a list row's item name to flag undercut status, instead of an inline icon/background
+function Atr_SetRowUndercutColor (lineEntry_text, itemName)
+
+	local status = Atr_GetUCStatus (itemName);
+	local color = (status and UC_TEXT_COLORS[status]) or UC_TEXT_COLOR_DEFAULT;
+
+	lineEntry_text:SetTextColor (color[1], color[2], color[3]);
+
+end
+
+-----------------------------------------
+
+-----------------------------------------
+
+function Atr_Hlist_OnVerticalScroll ()
+	if (Atr_IsTabSelected (BUY_TAB)) then
+		FauxScrollFrame_OnVerticalScroll (SLIST_ROW_HEIGHT, Atr_DisplayHlist);
+	else
+		FauxScrollFrame_OnVerticalScroll (ITEM_HIST_ROW_HEIGHT, Atr_DisplayHlist);
+	end
+end
 
 -----------------------------------------
 
@@ -2668,48 +2731,73 @@ function Atr_DisplayHlist ()
 	local doFull = (UIDropDownMenu_GetSelectedValue(Atr_DropDown1) == MODE_LIST_ALL);
 
 	Atr_BuildGlobalHistoryList (doFull);
-	
+
 	local numrows = getn(gHistoryItemList);
 
 	local line;							-- 1 through NN of our window to scroll
 	local dataOffset;					-- an index into our data calculated from the scroll offset
 
-	FauxScrollFrame_Update (Atr_Hlist_ScrollFrame, numrows, ITEM_HIST_NUM_LINES, 16);
+	FauxScrollFrame_Update (Atr_Hlist_ScrollFrame, numrows, ITEM_HIST_NUM_LINES, ITEM_HIST_ROW_HEIGHT);
 
-	for line = 1,ITEM_HIST_NUM_LINES do
-
-		gCurrentPane.hlistScrollOffset = FauxScrollFrame_GetOffset (Atr_Hlist_ScrollFrame);
-		
-		dataOffset = line + gCurrentPane.hlistScrollOffset;
+	for line = 1,ATR_HLIST_FRAME_COUNT do
 
 		local lineEntry = getglobal ("AuctionatorHEntry"..line);
 
-		lineEntry:SetID(dataOffset);
+		if (line > ITEM_HIST_NUM_LINES) then		-- beyond this list's page size; the Buy tab's longer, shorter-row list may have left these shown
 
-		if (dataOffset <= numrows and gHistoryItemList[dataOffset]) then
-
-			local lineEntry_text = getglobal("AuctionatorHEntry"..line.."_EntryText");
-
-			local iName = gHistoryItemList[dataOffset];
-
-			local icon = "";
-			
-			if (not doFull) then
-				icon = Atr_GetUCIcon (iName);
-			end
-
-			lineEntry_text:SetText	(icon..Atr_AbbrevItemName (iName));
-
-
-			if (iName == gCurrentPane.activeSearch.searchText) then
-				Atr_SetRowSelected (lineEntry, true);
-			else
-				Atr_SetRowSelected (lineEntry, false);
-			end
-
-			lineEntry:Show();
-		else
 			lineEntry:Hide();
+
+		else
+
+			gCurrentPane.hlistScrollOffset = FauxScrollFrame_GetOffset (Atr_Hlist_ScrollFrame);
+
+			dataOffset = line + gCurrentPane.hlistScrollOffset;
+
+			lineEntry:SetID(dataOffset);
+			lineEntry:SetHeight (ITEM_HIST_ROW_HEIGHT);
+			lineEntry:SetPoint ("TOPLEFT", 0, -5 - ((line-1)*ITEM_HIST_ROW_HEIGHT));
+
+			if (dataOffset <= numrows and gHistoryItemList[dataOffset]) then
+
+				local lineEntry_text	= getglobal("AuctionatorHEntry"..line.."_EntryText");
+				local lineEntry_icon	= getglobal("AuctionatorHEntry"..line.."_ItemIcon");
+				local lineEntry_count	= getglobal("AuctionatorHEntry"..line.."_ItemCount");
+
+				lineEntry_text:SetHeight (ITEM_HIST_ROW_HEIGHT);
+
+				local iName = gHistoryItemList[dataOffset];
+
+				if (not doFull) then
+					Atr_SetRowUndercutColor (lineEntry_text, iName);
+				else
+					Atr_SetRowUndercutColor (lineEntry_text, nil);
+				end
+
+				lineEntry_icon:SetTexture (Atr_GetListingIcon (iName));
+				lineEntry_icon:Show();
+
+				lineEntry_text:SetPoint ("LEFT", lineEntry_icon, "RIGHT", 4, 0);
+				lineEntry_text:SetWidth (140);
+				lineEntry_text:SetText (Atr_AbbrevItemName (iName));
+
+				local qty = (not doFull) and gActiveAuctions[iName];
+				if (qty and qty > 0) then
+					lineEntry_count:SetText (qty);
+					lineEntry_count:Show();
+				else
+					lineEntry_count:Hide();
+				end
+
+				if (iName == gCurrentPane.activeSearch.searchText) then
+					Atr_SetRowSelected (lineEntry, true);
+				else
+					Atr_SetRowSelected (lineEntry, false);
+				end
+
+				lineEntry:Show();
+			else
+				lineEntry:Hide();
+			end
 		end
 	end
 
@@ -4278,9 +4366,17 @@ end
 
 -----------------------------------------
 
+local ATR_MAX_ITEM_NAME_CHARS = 25;		-- total length incl. "...", e.g. "Wicked Chain Shield of..." - never any longer than this
+
 function Atr_AbbrevItemName (itemName)
 
-	return string.gsub (itemName, "Scroll of Enchant", "SoE");
+	local name = string.gsub (itemName, "Scroll of Enchant", "SoE");
+
+	if (string.len(name) > ATR_MAX_ITEM_NAME_CHARS) then
+		name = string.sub (name, 1, ATR_MAX_ITEM_NAME_CHARS - 3).."...";	-- hard cut, mid-word if need be, to use all the space available
+	end
+
+	return name;
 
 end
 
