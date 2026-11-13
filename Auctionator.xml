@@ -259,6 +259,17 @@
 					<Size><AbsDimension x="26" y="26" /></Size>
 					<Anchors><Anchor point="LEFT"><Offset><AbsDimension x="2" y="1"/></Offset></Anchor></Anchors>
 				</Texture>
+			</Layer>
+			<Layer level="ARTWORK">
+				<!-- a strictly higher named layer than ItemIcon's BACKGROUND, so this is guaranteed to
+				     draw on top of it - same-layer sibling order apparently isn't reliable on this
+				     client, which was very likely the real cause of the "missing icon" issue all along -->
+				<Texture name="$parent_UCOverlay" hidden="true">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="$parent_ItemIcon" relativePoint="TOPLEFT"/>
+						<Anchor point="BOTTOMRIGHT" relativeTo="$parent_ItemIcon" relativePoint="BOTTOMRIGHT"/>
+					</Anchors>
+				</Texture>
 				<FontString name="$parent_ItemCount" inherits="Atr_UCCountFont" justifyH="RIGHT" justifyV="BOTTOM" hidden="true">
 					<Anchors><Anchor point="BOTTOMRIGHT" relativeTo="$parent_ItemIcon" relativePoint="BOTTOMRIGHT"/></Anchors>
 				</FontString>
@@ -266,6 +277,14 @@
 					<Size><AbsDimension x="174" y="32" /></Size>
 					<Anchors><Anchor point="LEFT"><Offset><AbsDimension x="2" y="0"/></Offset></Anchor></Anchors>
 				</FontString>
+			</Layer>
+			<Layer level="OVERLAY">
+				<!-- strictly above ARTWORK (where UCOverlay lives), so this badge is guaranteed to
+				     draw on top of the color wash instead of leaving it to unreliable same-layer order -->
+				<Texture name="$parent_UCIcon" hidden="true">
+					<Size><AbsDimension x="12" y="12" /></Size>
+					<Anchors><Anchor point="BOTTOMLEFT" relativeTo="$parent_ItemIcon" relativePoint="BOTTOMLEFT"/></Anchors>
+				</Texture>
 			</Layer>
 		</Layers>
 

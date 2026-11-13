@@ -206,6 +206,8 @@ function Atr_SList:DisplayX ()
 			local lineEntry_count	= getglobal("AuctionatorHEntry"..line.."_ItemCount");
 
 			lineEntry_icon:Hide();		-- this list never shows an item icon
+			getglobal("AuctionatorHEntry"..line.."_UCOverlay"):Hide();
+			getglobal("AuctionatorHEntry"..line.."_UCIcon"):Hide();
 			lineEntry_count:Hide();
 
 			lineEntry_text:SetHeight (SLIST_ROW_HEIGHT);

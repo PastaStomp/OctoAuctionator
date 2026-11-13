@@ -98,6 +98,7 @@ ATR_HLIST_FRAME_COUNT = 13;			-- global: total AuctionatorHEntry frames to creat
 
 local gActiveAuctions = {};
 local gActiveAuctionIcons = {};		-- textures captured straight off the native "owner" auction query - always available instantly, unlike GetItemInfo-by-name
+local gActiveAuctionRarity = {};		-- same deal, for item rarity (quality)
 
 local gHlistNeedsUpdate = false;
 
@@ -674,6 +675,7 @@ function Atr_Init()
 
 	for n = 1, ATR_HLIST_FRAME_COUNT do
 		line = CreateFrame("BUTTON", "AuctionatorHEntry"..n, Atr_Hlist, "Atr_HEntryTemplate");
+		getglobal("AuctionatorHEntry"..n.."_UCOverlay"):SetTexture ("Interface\\Buttons\\WHITE8X8");
 	end
 
 	Atr_ShowHide_StartingPrice();
@@ -1166,6 +1168,7 @@ function Atr_OnAuctionOwnedUpdate ()
 
 	gActiveAuctions = {};		-- always flush this cache
 	gActiveAuctionIcons = {};
+	gActiveAuctionRarity = {};
 
 	if (gJustPosted_ItemName) then
 
@@ -2607,10 +2610,11 @@ function Atr_BuildActiveAuctions ()
 
 	gActiveAuctions = {};
 	gActiveAuctionIcons = {};
+	gActiveAuctionRarity = {};
 
 	local i = 1;
 	while (true) do
-		local name, texture, count = GetAuctionItemInfo ("owner", i);
+		local name, texture, count, quality = GetAuctionItemInfo ("owner", i);
 		if (name == nil) then
 			break;
 		end
@@ -2620,6 +2624,10 @@ function Atr_BuildActiveAuctions ()
 
 			if (texture and not gActiveAuctionIcons[name]) then
 				gActiveAuctionIcons[name] = texture;
+			end
+
+			if (quality and not gActiveAuctionRarity[name]) then
+				gActiveAuctionRarity[name] = quality;
 			end
 		end
 
@@ -2690,18 +2698,59 @@ end
 
 -----------------------------------------
 
-local UC_TEXT_COLORS = {
-	safe		= {0.3, 1.0, 0.3},
-	partial		= {1.0, 0.82, 0.0},
-	undercut	= {1.0, 0.3, 0.3},
+-- the standard classic item quality colors (poor through legendary), kept local so this doesn't
+-- depend on the global ITEM_QUALITY_COLORS table existing/matching on every client
+local ITEM_RARITY_COLORS = {
+	[0] = {0.61, 0.61, 0.61},	-- poor
+	[1] = {1.00, 1.00, 1.00},	-- common
+	[2] = {0.12, 1.00, 0.00},	-- uncommon
+	[3] = {0.00, 0.44, 0.87},	-- rare
+	[4] = {0.64, 0.21, 0.93},	-- epic
+	[5] = {1.00, 0.50, 0.00},	-- legendary
 };
-local UC_TEXT_COLOR_DEFAULT = {1.0, 1.0, 1.0};
+local ITEM_RARITY_COLOR_DEFAULT = {1.0, 1.0, 1.0};
 
--- colors a list row's item name to flag undercut status, instead of an inline icon/background
-function Atr_SetRowUndercutColor (lineEntry_text, itemName)
+local UC_ICON_TEXTURES = {
+	safe		= "Interface\\AddOns\\OctoAuctionator\\Images\\auction_undercut_no.tga",
+	partial		= "Interface\\AddOns\\OctoAuctionator\\Images\\auction_undercut_partial.tga",
+	undercut	= "Interface\\AddOns\\OctoAuctionator\\Images\\auction_undercut_yes.tga",
+};
 
-	local status = Atr_GetUCStatus (itemName);
-	local color = (status and UC_TEXT_COLORS[status]) or UC_TEXT_COLOR_DEFAULT;
+-- small custom-icon badge over the bottom-left of the item icon, flagging undercut status. It used
+-- to render inconsistently (sometimes hidden behind the opaque item icon) because it shared
+-- ItemIcon's BACKGROUND draw layer, where sibling order isn't reliably enforced on this client;
+-- it now lives in OVERLAY, a strictly higher named layer guaranteed to draw above BACKGROUND -
+-- see Atr_HEntryTemplate. ucOverlay (a color wash over the icon) is kept around but deliberately
+-- unused - it looked worse than the badge alone when tried.
+function Atr_SetRowUndercutIcon (ucOverlay, ucIcon, itemName)
+
+	local status = itemName and Atr_GetUCStatus (itemName);
+
+	ucOverlay:Hide();
+
+	if status then
+		ucIcon:SetTexture (UC_ICON_TEXTURES[status]);
+		ucIcon:Show();
+	else
+		ucIcon:Hide();
+	end
+
+end
+
+-- colors a list row's item name by the item's own rarity (poor/common/uncommon/rare/epic/
+-- legendary) - a fixed property of the item, unlike undercut status, so it never changes once set
+function Atr_SetRowItemRarityColor (lineEntry_text, itemName)
+
+	local rarity;
+	if (itemName) then
+		rarity = gActiveAuctionRarity[itemName];
+		if (rarity == nil) then
+			local _, _, r = Atr_GetItemInfo (itemName);
+			rarity = r;
+		end
+	end
+
+	local color = (rarity and ITEM_RARITY_COLORS[rarity]) or ITEM_RARITY_COLOR_DEFAULT;
 
 	lineEntry_text:SetTextColor (color[1], color[2], color[3]);
 
@@ -2762,19 +2811,23 @@ function Atr_DisplayHlist ()
 				local lineEntry_text	= getglobal("AuctionatorHEntry"..line.."_EntryText");
 				local lineEntry_icon	= getglobal("AuctionatorHEntry"..line.."_ItemIcon");
 				local lineEntry_count	= getglobal("AuctionatorHEntry"..line.."_ItemCount");
+				local lineEntry_uc_overlay	= getglobal("AuctionatorHEntry"..line.."_UCOverlay");
+				local lineEntry_uc_icon	= getglobal("AuctionatorHEntry"..line.."_UCIcon");
 
 				lineEntry_text:SetHeight (ITEM_HIST_ROW_HEIGHT);
 
 				local iName = gHistoryItemList[dataOffset];
 
-				if (not doFull) then
-					Atr_SetRowUndercutColor (lineEntry_text, iName);
-				else
-					Atr_SetRowUndercutColor (lineEntry_text, nil);
-				end
-
 				lineEntry_icon:SetTexture (Atr_GetListingIcon (iName));
 				lineEntry_icon:Show();
+
+				Atr_SetRowItemRarityColor (lineEntry_text, iName);
+
+				if (not doFull) then
+					Atr_SetRowUndercutIcon (lineEntry_uc_overlay, lineEntry_uc_icon, iName);
+				else
+					Atr_SetRowUndercutIcon (lineEntry_uc_overlay, lineEntry_uc_icon, nil);
+				end
 
 				lineEntry_text:SetPoint ("LEFT", lineEntry_icon, "RIGHT", 4, 0);
 				lineEntry_text:SetWidth (140);
@@ -2794,7 +2847,8 @@ function Atr_DisplayHlist ()
 					Atr_SetRowSelected (lineEntry, false);
 				end
 
-				lineEntry:Show();
+				lineEntry:Hide();		-- force a real transition - a row left in the "already shown" state from the last redraw
+				lineEntry:Show();		-- seems to make this client skip re-compositing its children's visibility changes
 			else
 				lineEntry:Hide();
 			end
@@ -3665,7 +3719,7 @@ end
 function Atr_GetSellStacking (itemLink, numDragged, numTotal)
 
 	local prefNumStacks, prefStackSize = Atr_GetStackingPrefs_ByItem (itemLink);
-	
+
 	if (prefNumStacks == nil) then
 		return 1, numDragged;
 	end
