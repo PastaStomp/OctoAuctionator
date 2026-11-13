@@ -920,6 +920,41 @@ end
 
 -----------------------------------------
 
+-- the biggest stack size you could possibly set right now - capped by both the item's own max
+-- stack size and how many you actually have to sell, whichever is smaller
+function Atr_MaxPossibleStackSize ()
+
+	local total = gCurrentPane.totalItems or 0;
+	local fullStack = gCurrentPane.fullStackSize or 0;
+
+	if (fullStack <= 0) then
+		return total;
+	end
+
+	return math.min (fullStack, total);
+end
+
+-----------------------------------------
+
+function Atr_MaxNumAuctions_OnClick ()
+
+	local maxAuctions = 0;
+	if (Atr_StackSize() > 0) then
+		maxAuctions = math.floor (gCurrentPane.totalItems / Atr_StackSize());
+	end
+
+	Atr_Batch_NumAuctions:SetText (maxAuctions);
+end
+
+-----------------------------------------
+
+function Atr_MaxStacksize_OnClick ()
+	Atr_SetStackSize (Atr_MaxPossibleStackSize());
+	Atr_MaxNumAuctions_OnClick ();		-- re-max the number of stacks too, now that the stack size just changed
+end
+
+-----------------------------------------
+
 function Atr_SelectPane (whichTab)
 
 	local index = Atr_FindTabIndex(whichTab);
@@ -2529,7 +2564,7 @@ function Atr_UpdateUI_SellPane (needsUpdate)
 			end
 			
 			Atr_Batch_MaxAuctions_Text:SetText (ZT("max")..": "..maxAuctions);
-			Atr_Batch_MaxStacksize_Text:SetText (ZT("max")..": "..gCurrentPane.fullStackSize);
+			Atr_Batch_MaxStacksize_Text:SetText (ZT("max")..": "..Atr_MaxPossibleStackSize());
 			
 			Atr_SetDepositText();			
 		end
@@ -3718,42 +3753,38 @@ end
 
 function Atr_GetSellStacking (itemLink, numDragged, numTotal)
 
+	-- the number of stacks always defaults to the max possible for however many you actually have
+	-- in your bags - only the stack size itself is ever remembered/capped by the item's own limit
+
 	local prefNumStacks, prefStackSize = Atr_GetStackingPrefs_ByItem (itemLink);
 
-	if (prefNumStacks == nil) then
-		return 1, numDragged;
-	end
-	
-	if (prefNumStacks <= 0 and prefStackSize <= 0) then		-- shouldn't happen but just in case
-		prefStackSize = 1;
-	end
+	local stackSize;
 
---zc.msg (prefNumStacks, prefStackSize);
+	if (prefStackSize and prefStackSize > 0) then		-- a remembered, fixed stack size
+		stackSize = prefStackSize;
 
-	local numStacks = prefNumStacks;
-	local stackSize = prefStackSize;
-	local numToSell = numDragged;
-	
-	if (numStacks == -1) then		-- max number of stacks
-		numToSell = numTotal;
+	elseif (prefNumStacks and prefNumStacks > 0) then		-- "auto stacksize": derive it from the remembered number of stacks
+		stackSize = math.floor (numDragged / prefNumStacks);
 
-	elseif (stackSize == 0) then		-- auto stacksize
-		stackSize = math.floor (numDragged / numStacks);
-	
-	elseif (numStacks > 0) then
-		numToSell = math.min (numStacks * stackSize, numTotal);
+	else		-- no remembered preference at all - cap at the item's own max stack size
+		local maxStack = Atr_ItemStackSize (itemLink);
+		stackSize = numTotal;
+		if (maxStack and maxStack > 0) then
+			stackSize = math.min (maxStack, numTotal);
+		end
 	end
 
-	numStacks = math.floor (numToSell / stackSize);
+	if (not stackSize or stackSize <= 0) then
+		stackSize = numDragged;
+	end
 
---zc.msg_pink (numStacks, stackSize);
-	
+	local numStacks = math.floor (numTotal / stackSize);
+
 	if (numStacks == 0) then
 		numStacks = 1;
-		stackSize = numToSell;
---zc.msg_red (numStacks, stackSize);
+		stackSize = numTotal;
 	end
-	
+
 	return numStacks, stackSize;
 
 end

@@ -519,14 +519,6 @@
 							<Anchors><Anchor point="TOPLEFT"><Offset><AbsDimension x="55" y="-208"/></Offset></Anchor></Anchors>
 						</FontString>
 
-						<FontString name="Atr_Batch_MaxAuctions_Text" inherits="GameFontDarkGraySmall">
-							<Anchors><Anchor point="TOPLEFT" relativeTo="Atr_Batch_Stacksize_Text"><Offset><AbsDimension x="-34" y="-21"/></Offset></Anchor></Anchors>
-						</FontString>
-
-						<FontString name="Atr_Batch_MaxStacksize_Text" inherits="GameFontDarkGraySmall">
-							<Anchors><Anchor point="TOPLEFT" relativeTo="Atr_Batch_Stacksize_Text"><Offset><AbsDimension x="79" y="-21"/></Offset></Anchor></Anchors>
-						</FontString>
-
 						<FontString name="Atr_StartingPriceText" inherits="GameFontHighlightSmall" text="Starting Price" hidden="true">
 							<Anchors><Anchor point="TOPLEFT"><Offset><AbsDimension x="13" y="-260"/></Offset></Anchor></Anchors>
 						</FontString>
@@ -646,7 +638,29 @@
 							<OnTabPressed>		Atr_Batch_NumAuctions:SetFocus()	</OnTabPressed>
 						</Scripts>
 					</EditBox>
-					
+
+					<Button name="Atr_Batch_MaxAuctions_Text" inherits="UIPanelButtonTemplate">
+						<Size><AbsDimension x="60" y="16"/></Size>
+						<Anchors><Anchor point="TOP" relativeTo="Atr_Batch_NumAuctions" relativePoint="BOTTOM"><Offset><AbsDimension x="0" y="-2"/></Offset></Anchor></Anchors>
+						<NormalFont inherits="GameFontNormalSmall"/>
+						<HighlightFont inherits="GameFontHighlightSmall"/>
+						<DisabledFont inherits="GameFontDisableSmall"/>
+						<Scripts>
+							<OnClick>Atr_MaxNumAuctions_OnClick();</OnClick>
+						</Scripts>
+					</Button>
+
+					<Button name="Atr_Batch_MaxStacksize_Text" inherits="UIPanelButtonTemplate">
+						<Size><AbsDimension x="60" y="16"/></Size>
+						<Anchors><Anchor point="TOP" relativeTo="Atr_Batch_Stacksize" relativePoint="BOTTOM"><Offset><AbsDimension x="0" y="-2"/></Offset></Anchor></Anchors>
+						<NormalFont inherits="GameFontNormalSmall"/>
+						<HighlightFont inherits="GameFontHighlightSmall"/>
+						<DisabledFont inherits="GameFontDisableSmall"/>
+						<Scripts>
+							<OnClick>Atr_MaxStacksize_OnClick();</OnClick>
+						</Scripts>
+					</Button>
+
 					<Button name="Atr_CreateAuctionButton" inherits="UIPanelButtonTemplate"  text="Create Auction" disabled="true">
 						<Size><AbsDimension x="185" y="30"/>	</Size>
 						<Anchors><Anchor point="TOPLEFT"><Offset><AbsDimension x="3" y="-170"/></Offset></Anchor></Anchors>
