@@ -1,6 +1,7 @@
-# OctoAuctionator
+# OctoAuctionator - Fixed and improved
 
 The classic **Auctionator 2.6.2** auction house (Buy / Sell / More... tabs) ported to **OctoWoW 1.18.1** (1.12.1 client).
+Fixed and improved.
 A free addon.
 
 **Made by John The Baptist.**
